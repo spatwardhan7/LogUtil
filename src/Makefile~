@@ -1,6 +1,6 @@
 CFLAGS  = -g -Wall -pedantic -I../inc
 LFLAGS  =
-CC      = gcc
+CC      = g++
 RM      = /bin/rm -rf
 AR      = ar rc
 RANLIB  = ranlib
@@ -19,7 +19,7 @@ all: $(LIBRARY)
 
 $(LIBRARY): $(LIB_OBJ)
 	$(AR) $(LIBRARY) $(LIB_OBJ)
-	$(RANLIB) $(LIBRARY)
+	$(RANLIB) $(LIBRARY) 
 
 clean:
 	$(RM) $(LIBRARY) $(LIB_OBJ) 
