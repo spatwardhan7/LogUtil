@@ -19,7 +19,10 @@ static void * thread_start(void *arg)
     while(1)
     {
          sleep(1);
+            
          LOG_TYPE = count %4;
+         if(LOG_TYPE == 0 && count <15)
+            LOG_TYPE = 1; 
 
 	     DMLog((DMLogLevel)LOG_TYPE,"Thread %d : LOG TYPE %d in test %d and str %s", tinfo->thread_num,(DMLogLevel)LOG_TYPE,count,detail);
          count++;
@@ -32,7 +35,7 @@ static void * thread_start(void *arg)
 int main(int argc, char* argv[])
 {
 	
-    int num_threads = 5; 
+    int num_threads = 1; 
     struct thread_info *tinfo;
     pthread_attr_t attr;
 
@@ -60,7 +63,7 @@ int main(int argc, char* argv[])
         return 1; 
 
     
-    DMLog(DM_LOG_ERROR,"Initial Test message version 0.000001 %d",5);
+    //DMLog(DM_LOG_WARNING,"Initial Test message version 0.000001 %d",5);
 
 
     while(1)
