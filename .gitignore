@@ -23,7 +23,8 @@
 *.hex
 
 #Lock files
-*.*~
+*~
 
 #text files
 *.txt
+
