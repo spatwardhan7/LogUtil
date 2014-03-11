@@ -58,14 +58,11 @@ static bool isQueueEmpty()
 
 static void * aggressiveConsumer(void *arg)
 {
-    //printf("Inside new thread \n"); 
 
     // Run infinitely
     int result = 0;
     while(1)
     {
-        // Wait for error to happen
-        //    sigWaitInfo();
         result = sigwaitinfo( &waitset, &info );
         if( result == 0 )
             printf( "sigwaitinfo() returned for signal %d\n",info.si_signo );
@@ -81,8 +78,6 @@ static void * aggressiveConsumer(void *arg)
 
 static void * periodicConsumer(void *arg)
 {
-    //printf("Inside new thread \n"); 
-
     struct timespec ts;
     ts.tv_sec = 0;
     ts.tv_nsec = TIMER_MS * N_SEC_TO_M_SEC;
@@ -103,7 +98,7 @@ static int openLogFile()
 	    struct tm tm= *localtime(&t);	
         std::string buffer;
  
-        snprintf((char*)buffer.c_str(),100,"%d-%d-%d_%d-%d-%d.txt", tm.tm_mon + 1, tm.tm_mday, tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec);
+        sprintf((char*)buffer.c_str(),"%d-%d-%d_%d-%d-%d.txt", tm.tm_mon + 1, tm.tm_mday, tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec);
 
     	fp = fopen(buffer.c_str(),"w");
 	    if(!fp)
@@ -143,10 +138,8 @@ void catcher( int sig ) {
     printf( "Signal catcher called for signal %d\n", sig );
 }
 
-int initLogger()
+static void setupSignal(struct sigaction sigact)
 {
-    
-    struct sigaction sigact;
     sigemptyset( &sigact.sa_mask );
     sigact.sa_flags = 0;
     sigact.sa_handler = catcher;
@@ -156,19 +149,12 @@ int initLogger()
     sigaddset( &waitset, SIGUSR1);
 
     sigprocmask( SIG_BLOCK, &waitset, NULL );
+}
 
-
-
-
-    pthread_attr_t attr;
-    pthread_t periodic_t;
-    
-
-    if(createThread(&periodic_t,&attr,&periodicConsumer))
-        return INIT_LOGGER_FAILED;
-   
-    if(createThread(&aggressive_t,&attr,&aggressiveConsumer))
-        return INIT_LOGGER_FAILED;
+int initLogger()
+{    
+    struct sigaction sigact;
+    setupSignal(sigact);
 
     if(LOG_TO_FILE == 1)
     {
@@ -176,7 +162,16 @@ int initLogger()
             return INIT_LOGGER_FAILED; 
     }
 
-    return 0;
+    pthread_attr_t attr;
+    pthread_t periodic_t;
+
+    if(createThread(&periodic_t,&attr,&periodicConsumer))
+        return INIT_LOGGER_FAILED;
+   
+    if(createThread(&aggressive_t,&attr,&aggressiveConsumer))
+        return INIT_LOGGER_FAILED;
+
+    return INIT_LOGGER_OK;
 }
 
 void DMLog(DMLogLevel logLevel, char *format, ...)

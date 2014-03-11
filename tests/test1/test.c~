@@ -18,10 +18,10 @@ static void * thread_start(void *arg)
 
     while(1)
     {
-         sleep(2);
+         sleep(1);
          LOG_TYPE = count %4;
 
-	     DMLog((DMLogLevel)LOG_TYPE,"Thread %d : LOG TYPE %d FROM thread in test %d and str %s", tinfo->thread_num,(DMLogLevel)LOG_TYPE,count,detail);
+	     DMLog((DMLogLevel)LOG_TYPE,"Thread %d : LOG TYPE %d in test %d and str %s", tinfo->thread_num,(DMLogLevel)LOG_TYPE,count,detail);
          count++;
 
     }
@@ -32,7 +32,7 @@ static void * thread_start(void *arg)
 int main(int argc, char* argv[])
 {
 	
-    int num_threads = 1; 
+    int num_threads = 5; 
     struct thread_info *tinfo;
     pthread_attr_t attr;
 
