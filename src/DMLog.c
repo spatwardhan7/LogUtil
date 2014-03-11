@@ -27,7 +27,13 @@ static void * thread_start(void *arg)
     FILE *fp;
     if(LOG_TO_FILE == 1)
     {
-	fp = fopen("log.txt","w");
+	time_t t = time(NULL);
+	struct tm tm= *localtime(&t);	
+        char buffer[100];
+ 
+        snprintf(buffer,100,"%d-%d-%d-%d-%d-%d.txt", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+	fp = fopen(buffer,"w");
 	if(!fp)
         {
 	    fprintf(stderr,"Failed to open log file: %s\n", strerror(errno));
@@ -144,8 +150,6 @@ void DMLog(DMLogLevel logLevel, char *format, ...)
     logQueue.push(buffer);   
     pthread_mutex_unlock(&mutex);
 
-    
-
-	
+    free(temp);	
 }
 
