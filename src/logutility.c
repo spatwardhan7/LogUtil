@@ -67,7 +67,7 @@ static void * aggressiveConsumer(void *arg)
     while(1)
     {
         result = sigwaitinfo( &waitset, &info );     
-        if( result > 0 )
+        if( result == SIGUSR1 )
         {
             //fprintf(stderr,"sigwaitinfo() SUCCESS returned for signal %d\n",info.si_signo );
             while(!isQueueEmpty())
