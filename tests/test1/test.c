@@ -44,6 +44,10 @@ int main(int argc, char* argv[])
     int s;
     int tnum;	
 
+    if(initLogger())
+        return 1; 
+
+
     pthread_attr_init(&attr);     
 
     for (tnum = 0; tnum < num_threads; tnum++) 
@@ -59,8 +63,7 @@ int main(int argc, char* argv[])
            
     }
 
-    if(initLogger())
-        return 1; 
+
 
     
     //DMLog(DM_LOG_WARNING,"Initial Test message version 0.000001 %d",5);

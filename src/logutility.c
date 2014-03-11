@@ -22,7 +22,6 @@ static std::queue<char*> logQueue;
 static pthread_mutex_t     mutex = PTHREAD_MUTEX_INITIALIZER;
 static FILE *fp;
 static pthread_t aggressive_t;
-static sigset_t waitset;
 static siginfo_t info;
 
 static void consumeFromQueue()
@@ -59,15 +58,18 @@ static bool isQueueEmpty()
 
 static void * aggressiveConsumer(void *arg)
 {
-
+    sigset_t waitset;
+    sigemptyset( &waitset );
+    sigaddset( &waitset, SIGUSR1);
+    sigprocmask( SIG_BLOCK, &waitset, NULL );
     // Run infinitely
     int result = 0;
     while(1)
     {
         result = sigwaitinfo( &waitset, &info );     
-        if( result == 0 )
+        if( result > 0 )
         {
-            fprintf(stderr,"sigwaitinfo() SUCCESS returned for signal %d\n",info.si_signo );
+            //fprintf(stderr,"sigwaitinfo() SUCCESS returned for signal %d\n",info.si_signo );
             while(!isQueueEmpty())
             {         
                 consumeFromQueue();
@@ -144,24 +146,8 @@ void catcher( int sig ) {
     printf( "Signal catcher called for signal %d\n", sig );
 }
 
-static void setupSignal(struct sigaction sigact)
-{
-    sigemptyset( &sigact.sa_mask );
-    sigact.sa_flags = 0;
-    sigact.sa_handler = catcher;
-    sigaction( SIGUSR1, &sigact, NULL );
-
-    sigemptyset( &waitset );
-    sigaddset( &waitset, SIGUSR1);
-
-    pthread_sigmask( SIG_BLOCK, &waitset, NULL );
-}
-
 int initLogger()
 {    
-    struct sigaction sigact;
-    setupSignal(sigact);
-
     if(LOG_TO_FILE == 1)
     {
         if(openLogFile())
