@@ -18,32 +18,11 @@ const char * DM_INFO_MSG =    "<DM_LOG_INFO>    :";
 
 std::queue<char*> logQueue;
 pthread_mutex_t     mutex = PTHREAD_MUTEX_INITIALIZER;
+FILE *fp;
 
 
-
-static void * thread_start(void *arg)
+static void consumeFromQueue()
 {
-    //printf("Inside new thread \n"); 
-    FILE *fp;
-    if(LOG_TO_FILE == 1)
-    {
-	time_t t = time(NULL);
-	struct tm tm= *localtime(&t);	
-        char buffer[100];
- 
-        snprintf(buffer,100,"%d-%d-%d-%d-%d-%d.txt", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-
-	fp = fopen(buffer,"w");
-	if(!fp)
-        {
-	    fprintf(stderr,"Failed to open log file: %s\n", strerror(errno));
-            exit(1);   
-        }
-    }
-
-
-    while(1)
-    {        
 	pthread_mutex_lock(&mutex);	
         if(!logQueue.empty())
         {
@@ -62,43 +41,115 @@ static void * thread_start(void *arg)
         {  
           pthread_mutex_unlock(&mutex);
         }
-        
 
-        sleep(1);
+}
+
+static bool isQueueEmpty()
+{
+    bool bEmpty = false;
+    pthread_mutex_lock  (&mutex);
+    bEmpty = logQueue.empty() ? true : false;
+    pthread_mutex_unlock(&mutex);
+    return bEmpty;
+}
+
+static void * aggressiveConsumer(void *arg)
+{
+    //printf("Inside new thread \n"); 
+
+    // Run infinitely
+    while(1)
+    {
+        // Wait for error to happen
+        //    sigWaitInfo();
+        while(!isQueueEmpty())
+        {        
+            consumeFromQueue();
+        }
     }
     return NULL;
 }
 
 
-pthread_t t;
+static void * periodicConsumer(void *arg)
+{
+    //printf("Inside new thread \n"); 
+
+    struct timespec ts;
+    ts.tv_sec = 0;
+    ts.tv_nsec = TIMER_MS * N_SEC_TO_M_SEC;
+
+    while(1)
+    {        
+        consumeFromQueue();
+        nanosleep(&ts,NULL);
+    }
+    return NULL;
+}
+
+
+
+static int openLogFile()
+{
+    if(LOG_TO_FILE == 1)
+    {
+	time_t t = time(NULL);
+	struct tm tm= *localtime(&t);	
+        char buffer[100];
+ 
+        snprintf(buffer,100,"%d-%d-%d-%d-%d-%d.txt", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+	fp = fopen(buffer,"w");
+	if(!fp)
+        {
+	    fprintf(stderr,"Failed to open log file: %s\n", strerror(errno));
+            return 1;   
+        }
+    }
+    return 0;
+}
+
+
+
+
+
+static int createThread(pthread_t *thread,pthread_attr_t *attr, void *(*start_routine) (void *))
+{
+        
+    if(pthread_attr_init(attr))
+    {
+	    fprintf(stderr,"Failed to init logger thread: %s\n", strerror(errno));
+        return INIT_LOGGER_FAILED;
+    }    
+    
+    if(pthread_create(thread, attr,start_routine, NULL))
+    {
+	    fprintf(stderr,"Failed to create logger thread: %s\n", strerror(errno));
+        return INIT_LOGGER_FAILED;
+    }
+
+    if(pthread_detach(*thread))
+    {
+	    fprintf(stderr,"Failed to detach thread: %s\n", strerror(errno));
+        return INIT_LOGGER_FAILED;
+    }
+
+    return INIT_LOGGER_OK; 
+}
 
 int initLogger()
 {
-    int s;
     pthread_attr_t attr;
-    
-    s = pthread_attr_init(&attr);
-    if( s != 0)
-    {
-	fprintf(stderr,"Failed to init logger thread: %s\n", strerror(errno));
-        return 1;
-    }    
+    pthread_t periodic_t;
 
-    s = pthread_create(&t, &attr,&thread_start, NULL);
-    if(s != 0)
+    createThread(&periodic_t,&attr,&periodicConsumer);
+   
+    if(LOG_TO_FILE == 1)
     {
-	fprintf(stderr,"Failed to create logger thread: %s\n", strerror(errno));
-        return 1;
+        if(openLogFile())
+            return INIT_LOGGER_FAILED; 
     }
 
-    s = pthread_detach(t);
-    if(s != 0)
-    {
-	fprintf(stderr,"Failed to detach thread: %s\n", strerror(errno));
-        return 1;
-    }
-
-    
     return 0;
 }
 
