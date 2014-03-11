@@ -32,7 +32,7 @@ static void * thread_start(void *arg)
 int main(int argc, char* argv[])
 {
 	
-    int num_threads = 3; 
+    int num_threads = 1; 
     struct thread_info *tinfo;
     pthread_attr_t attr;
 

@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <queue>
+#include <string>
 
 
 #include "logutility.h"
@@ -16,12 +17,12 @@ const char * DM_WARNING_MSG = "<DM_LOG_WARNING> :";
 const char * DM_TRACE_MSG =   "<DM_LOG_TRACE>   :";
 const char * DM_INFO_MSG =    "<DM_LOG_INFO>    :";
 
-std::queue<char*> logQueue;
-pthread_mutex_t     mutex = PTHREAD_MUTEX_INITIALIZER;
-FILE *fp;
-pthread_t aggressive_t;
-sigset_t waitset;
-siginfo_t info;
+static std::queue<char*> logQueue;
+static pthread_mutex_t     mutex = PTHREAD_MUTEX_INITIALIZER;
+static FILE *fp;
+static pthread_t aggressive_t;
+static sigset_t waitset;
+static siginfo_t info;
 
 static void consumeFromQueue()
 {
@@ -100,11 +101,11 @@ static int openLogFile()
     {
         time_t t = time(NULL);
 	    struct tm tm= *localtime(&t);	
-        char buffer[100];
+        std::string buffer;
  
-        snprintf(buffer,100,"%d-%d-%d-%d-%d-%d.txt", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+        snprintf((char*)buffer.c_str(),100,"%d-%d-%d_%d-%d-%d.txt", tm.tm_mon + 1, tm.tm_mday, tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec);
 
-    	fp = fopen(buffer,"w");
+    	fp = fopen(buffer.c_str(),"w");
 	    if(!fp)
         {
 	        fprintf(stderr,"Failed to open log file: %s\n", strerror(errno));
@@ -181,51 +182,43 @@ int initLogger()
 void DMLog(DMLogLevel logLevel, char *format, ...)
 {
     va_list arglist;
-    char *buffer = (char*) malloc(256);
-    char *temp = (char*) malloc(256); 
-
-    if(buffer == NULL || temp == NULL)
-    {
-        fprintf(stderr,"Failed to malloc buffer: %s\n", strerror(errno));
-        return;
-    }
+    std::string tempstr;
+    std::string logMsg;
 
     switch(logLevel)    
     {
 
-	case DM_LOG_ERROR:
-		strncpy(temp,DM_ERROR_MSG, strlen(DM_ERROR_MSG));
+	    case DM_LOG_ERROR:
+                tempstr.append(DM_ERROR_MSG);
                 break;
 
         case DM_LOG_WARNING:
-		strncpy(temp,DM_WARNING_MSG, strlen(DM_WARNING_MSG));
+                tempstr.append(DM_WARNING_MSG);
                 break; 
 
         case DM_LOG_TRACE:
-		strncpy(temp,DM_TRACE_MSG, strlen(DM_TRACE_MSG));
+                tempstr.append(DM_TRACE_MSG);
                 break;		
 
         case DM_LOG_INFO:
-		strncpy(temp,DM_INFO_MSG,strlen(DM_INFO_MSG));
+                tempstr.append(DM_INFO_MSG);
                 break;
 
-	default:
-		break;
+	    default:
+		        break;
     }    
 
-    strncat(temp,format, strlen(format));
-    va_start( arglist, temp );
-    vsprintf( buffer,temp, arglist);
+    tempstr.append(format);
+
+    va_start( arglist, (char*)tempstr.c_str() );
+    vsprintf( (char*) logMsg.c_str(),(char*)tempstr.c_str() , arglist);
     va_end( arglist );
-	    
-    	
+  	
     pthread_mutex_lock(&mutex);
-    logQueue.push(buffer);   
+    logQueue.push((char*) logMsg.c_str());   
     pthread_mutex_unlock(&mutex);
 
     if(logLevel == DM_LOG_ERROR)
         pthread_kill(aggressive_t,SIGUSR1);
-
-    free(temp);	
 }
 

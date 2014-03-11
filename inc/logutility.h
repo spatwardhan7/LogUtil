@@ -9,7 +9,7 @@
 #define TIMER_MS         100
 
 #define INIT_LOGGER_OK       0
-#define INIT_LOGGER_FAILED   0
+#define INIT_LOGGER_FAILED   1
 
 #include <pthread.h>
 #include <unistd.h>
