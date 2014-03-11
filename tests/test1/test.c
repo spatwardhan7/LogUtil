@@ -5,7 +5,7 @@
 
 static void * thread_start(void *arg)
 {
-    printf("new thread in test started\n"); 
+    //printf("new thread in test started\n"); 
 
     char detail[]= "Detail string ";
     int count = 0;
@@ -16,7 +16,7 @@ static void * thread_start(void *arg)
          sleep(2);
          LOG_TYPE = count %4;
 
-	 DMLog((DMLogLevel)LOG_TYPE,"LOG TYPE %d FROM thread in test %d and str %s\n", (DMLogLevel)LOG_TYPE,count,detail);
+	 DMLog((DMLogLevel)LOG_TYPE,"LOG TYPE %d FROM thread in test %d and str %s", (DMLogLevel)LOG_TYPE,count,detail);
          count++;
 
     }
@@ -31,8 +31,6 @@ int main(int argc, char* argv[])
         return 1; 
 
     DMLog(DM_LOG_ERROR,"Initial Test message version 0.000001 %d",5);
-
-    printf("\n in test - DMLOG returned\n");
 
 
     pthread_attr_t attr;

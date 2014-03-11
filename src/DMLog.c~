@@ -6,7 +6,6 @@
 #include <stdarg.h>
 #include <string.h>
 #include <queue>
-#include <string>
 
 
 #include "logutility.h"
@@ -17,8 +16,6 @@ const char * DM_WARNING_MSG = "<DM_LOG_WARNING> :";
 const char * DM_TRACE_MSG =   "<DM_LOG_TRACE>   :";
 const char * DM_INFO_MSG =    "<DM_LOG_INFO>    :";
 
-
-FILE *fp;
 std::queue<char*> logQueue;
 pthread_mutex_t     mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -26,29 +23,37 @@ pthread_mutex_t     mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void * thread_start(void *arg)
 {
-    printf("Inside new thread \n"); 
+    //printf("Inside new thread \n"); 
+    FILE *fp;
+    if(LOG_TO_FILE == 1)
+    {
+	fp = fopen("log.txt","w");
+	if(!fp)
+        {
+	    fprintf(stderr,"Failed to open log file: %s\n", strerror(errno));
+            exit(1);   
+        }
+    }
 
 
     while(1)
-    {
-	//printf("Trying to get lock\n");        
-	pthread_mutex_lock(&mutex);
-        //printf("got LOCK \n"); 
-	
+    {        
+	pthread_mutex_lock(&mutex);	
         if(!logQueue.empty())
         {
- 	    //printf("Found elem in queue \n");
-            //printf("Size of queue :%d \n", logQueue.size());
-            //char *str = new char[strlen(logQueue.front()) * sizeof(char)];
-	    //str = strdup(logQueue.front()); 
-            printf("Message from queue is: %s\n",logQueue.front());
+            char *str = logQueue.front(); 
 	    logQueue.pop();
             pthread_mutex_unlock(&mutex);
- 	    
+            if(LOG_TO_FILE == 1)
+            {
+	        fprintf(fp,"%s\n",str);
+                fflush(fp);
+            }
+            if(LOG_TO_CONSOLE == 1)
+                printf("%s\n",str);    
         }
 	else
         {  
-          //printf("Queue empty - Releasing lock\n");
           pthread_mutex_unlock(&mutex);
         }
         
@@ -97,10 +102,10 @@ int initLogger()
 void DMLog(DMLogLevel logLevel, char *format, ...)
 {
     va_list arglist;
-    char * buffer = (char*) malloc(256);
+    char *buffer = (char*) malloc(256);
     char *temp = (char*) malloc(256); 
 
-    if(!buffer)
+    if(buffer == NULL || temp == NULL)
     {
         fprintf(stderr,"Failed to malloc buffer: %s\n", strerror(errno));
         return;
@@ -110,38 +115,26 @@ void DMLog(DMLogLevel logLevel, char *format, ...)
     {
 
 	case DM_LOG_ERROR:
-                
 		strncpy(temp,DM_ERROR_MSG, strlen(DM_ERROR_MSG));
-		//printf("TEMP : %s\n\n", temp);
-                strncat(temp,format, strlen(format));
-                //printf("<><><>< TEMP ::::: %s\n",temp );
-		//strcat();
-		//pthread_kill(t,SIGUSR1);
                 break;
 
         case DM_LOG_WARNING:
 		strncpy(temp,DM_WARNING_MSG, strlen(DM_WARNING_MSG));
-                strncat(temp,format, strlen(format));
-		//printf(" TEMP ::::: %s\n",temp );
-
                 break; 
 
         case DM_LOG_TRACE:
 		strncpy(temp,DM_TRACE_MSG, strlen(DM_TRACE_MSG));
-                strncat(temp,format, strlen(format));
-		//printf(" TEMP ::::: %s\n",temp );
                 break;		
 
         case DM_LOG_INFO:
 		strncpy(temp,DM_INFO_MSG,strlen(DM_INFO_MSG));
-                strncat(temp,format, strlen(format));
-		//printf(" TEMP ::::: %s\n",temp );
                 break;
 
 	default:
 		break;
     }    
 
+    strncat(temp,format, strlen(format));
     va_start( arglist, temp );
     vsprintf( buffer,temp, arglist);
     va_end( arglist );
@@ -149,7 +142,6 @@ void DMLog(DMLogLevel logLevel, char *format, ...)
     	
     pthread_mutex_lock(&mutex);
     logQueue.push(buffer);   
-    //printf("Pushed to queue\n");
     pthread_mutex_unlock(&mutex);
 
     

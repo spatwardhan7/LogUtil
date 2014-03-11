@@ -3,7 +3,7 @@
 
 
 #define LOG_TO_FILE      1    
-#define LOG_TO_CONSOLE   0
+#define LOG_TO_CONSOLE   1
 #define DM_NUM_CORES     2
 
 #include <pthread.h>
