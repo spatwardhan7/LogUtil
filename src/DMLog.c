@@ -11,6 +11,8 @@
 
 #include "logutility.h"
 
+//JUST FOR GIT
+
 
 const char * DM_ERROR_MSG =   "<DM_LOG_ERROR>   :";
 const char * DM_WARNING_MSG = "<DM_LOG_WARNING> :";
