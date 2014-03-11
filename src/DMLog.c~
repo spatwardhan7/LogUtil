@@ -19,28 +19,30 @@ const char * DM_INFO_MSG =    "<DM_LOG_INFO>    :";
 std::queue<char*> logQueue;
 pthread_mutex_t     mutex = PTHREAD_MUTEX_INITIALIZER;
 FILE *fp;
-
+pthread_t aggressive_t;
+sigset_t waitset;
+siginfo_t info;
 
 static void consumeFromQueue()
 {
 	pthread_mutex_lock(&mutex);	
-        if(!logQueue.empty())
-        {
-            char *str = logQueue.front(); 
+    if(!logQueue.empty())
+    {
+        char *str = logQueue.front(); 
 	    logQueue.pop();
-            pthread_mutex_unlock(&mutex);
-            if(LOG_TO_FILE == 1)
-            {
-	        fprintf(fp,"%s\n",str);
-                fflush(fp);
-            }
-            if(LOG_TO_CONSOLE == 1)
-                printf("%s\n",str);    
+        pthread_mutex_unlock(&mutex);
+        if(LOG_TO_FILE == 1)
+        {
+            fprintf(fp,"%s\n",str);
+            fflush(fp);
         }
+        if(LOG_TO_CONSOLE == 1)
+            printf("%s\n",str);    
+    }
 	else
-        {  
-          pthread_mutex_unlock(&mutex);
-        }
+    {  
+        pthread_mutex_unlock(&mutex);
+    }
 
 }
 
@@ -58,10 +60,15 @@ static void * aggressiveConsumer(void *arg)
     //printf("Inside new thread \n"); 
 
     // Run infinitely
+    int result = 0;
     while(1)
     {
         // Wait for error to happen
         //    sigWaitInfo();
+        result = sigwaitinfo( &waitset, &info );
+        if( result == 0 )
+            printf( "sigwaitinfo() returned for signal %d\n",info.si_signo );
+        printf("HERE\n");
         while(!isQueueEmpty())
         {        
             consumeFromQueue();
@@ -87,31 +94,25 @@ static void * periodicConsumer(void *arg)
     return NULL;
 }
 
-
-
 static int openLogFile()
 {
     if(LOG_TO_FILE == 1)
     {
-	time_t t = time(NULL);
-	struct tm tm= *localtime(&t);	
+        time_t t = time(NULL);
+	    struct tm tm= *localtime(&t);	
         char buffer[100];
  
         snprintf(buffer,100,"%d-%d-%d-%d-%d-%d.txt", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 
-	fp = fopen(buffer,"w");
-	if(!fp)
+    	fp = fopen(buffer,"w");
+	    if(!fp)
         {
-	    fprintf(stderr,"Failed to open log file: %s\n", strerror(errno));
-            return 1;   
+	        fprintf(stderr,"Failed to open log file: %s\n", strerror(errno));
+               return 1;   
         }
     }
     return 0;
 }
-
-
-
-
 
 static int createThread(pthread_t *thread,pthread_attr_t *attr, void *(*start_routine) (void *))
 {
@@ -137,13 +138,37 @@ static int createThread(pthread_t *thread,pthread_attr_t *attr, void *(*start_ro
     return INIT_LOGGER_OK; 
 }
 
+void catcher( int sig ) {
+    printf( "Signal catcher called for signal %d\n", sig );
+}
+
 int initLogger()
 {
+    
+    struct sigaction sigact;
+    sigemptyset( &sigact.sa_mask );
+    sigact.sa_flags = 0;
+    sigact.sa_handler = catcher;
+    sigaction( SIGUSR1, &sigact, NULL );
+
+    sigemptyset( &waitset );
+    sigaddset( &waitset, SIGUSR1);
+
+    sigprocmask( SIG_BLOCK, &waitset, NULL );
+
+
+
+
     pthread_attr_t attr;
     pthread_t periodic_t;
+    
 
-    createThread(&periodic_t,&attr,&periodicConsumer);
+    if(createThread(&periodic_t,&attr,&periodicConsumer))
+        return INIT_LOGGER_FAILED;
    
+    if(createThread(&aggressive_t,&attr,&aggressiveConsumer))
+        return INIT_LOGGER_FAILED;
+
     if(LOG_TO_FILE == 1)
     {
         if(openLogFile())
@@ -152,9 +177,6 @@ int initLogger()
 
     return 0;
 }
-
-
-
 
 void DMLog(DMLogLevel logLevel, char *format, ...)
 {
@@ -200,6 +222,9 @@ void DMLog(DMLogLevel logLevel, char *format, ...)
     pthread_mutex_lock(&mutex);
     logQueue.push(buffer);   
     pthread_mutex_unlock(&mutex);
+
+    if(logLevel == DM_LOG_ERROR)
+        pthread_kill(aggressive_t,SIGUSR1);
 
     free(temp);	
 }

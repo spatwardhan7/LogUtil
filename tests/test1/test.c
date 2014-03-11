@@ -21,7 +21,7 @@ static void * thread_start(void *arg)
          sleep(2);
          LOG_TYPE = count %4;
 
-	 DMLog((DMLogLevel)LOG_TYPE,"Thread %d : LOG TYPE %d FROM thread in test %d and str %s", tinfo->thread_num,(DMLogLevel)LOG_TYPE,count,detail);
+	     DMLog((DMLogLevel)LOG_TYPE,"Thread %d : LOG TYPE %d FROM thread in test %d and str %s", tinfo->thread_num,(DMLogLevel)LOG_TYPE,count,detail);
          count++;
 
     }
